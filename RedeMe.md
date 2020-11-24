@@ -120,6 +120,6 @@ textContent /innerText / innerHtml  的区别与差异
 
 6. 数据描述符和存取描述符均具有以下描述符
 
-    configrable ： 描述属性是否可配置 ，以及可否删除
+   configrable ： 描述属性是否可配置 ，以及可否删除
 
    enumerable： 描述属性是否会出现在for in 或者 Obejct.keys( )的遍历中

@@ -3,7 +3,7 @@
  * @Author: wangyang
  * @Date: 2020-11-16 21:28:34
  * @LastEditors: wangyang
- * @LastEditTime: 2020-11-19 10:28:25
+ * @LastEditTime: 2020-11-24 14:20:20
  */
 const compileUtil = {
     //对表达式的处理 expr：msg（表达式）/person.fav 这两种情况都要处理
@@ -16,7 +16,17 @@ const compileUtil = {
             return data[currentVal]
         }, vm.$data)
     },
-
+    setVal(expr, vm, inputVal) {
+        return expr.split('.').reduce((data, currentVal) => {
+            //将input中的值直接赋值给旧值
+            data[currentVal] = inputVal
+        }, vm.$data)
+    },
+    getContent(expr, vm) {
+        return expr.replace(/\{\{(.+?)\}\}/g, (...args) => {
+            return this.getVal(args[1], vm)
+        })
+    },
     text(node, expr, vm) {
         let value;
         if (expr.indexOf('{{') !== -1) {
@@ -24,6 +34,10 @@ const compileUtil = {
             node:当前为文本节点 {{}}
              */
             value = expr.replace(/\{\{(.+?)\}\}/g, (...args) => {
+                //绑定观察者，将来数据发生变化 触发这里的回回调函数 从而更新页面
+                new Watcher(vm, args[1], (newVal) => {
+                    this.updater.textUpdater(node, this.getContent(expr, vm))
+                })
                 return this.getVal(args[1], vm)
             })
         } else {
@@ -40,10 +54,23 @@ const compileUtil = {
 
     html(node, expr, vm) {
         const value = this.getVal(expr, vm)
+        new Watcher(vm, expr, (newVal) => {
+            this.updater.htmlUpdater(node, newVal)
+        })
         this.updater.htmlUpdater(node, value)
     },
     model(node, expr, vm) {
         const value = this.getVal(expr, vm)
+        //绑定更新函数 数据驱动视图  数据===>视图
+        new Watcher(vm, expr, (newVal) => {
+            this.updater.modelUpdater(node, newVal)
+        })
+        //  视图=>数据=>视图  input的数据双向邦定
+        node.addEventListener('input', e => {
+            //设置值
+            console.log(' e.target.value', e.target.value);
+            this.setVal(expr, vm, e.target.value)
+        })
         this.updater.modelUpdater(node, value)
     },
     //处理事件
@@ -189,6 +216,19 @@ class MVue {
             //2.实现一个指令的解析器
             //2.1 Compile传递当前的节点还有当前的实例
             new Compile(this.$el, this)
+            this.proxyData(this.$data)
+        }
+    }
+    proxyData(data) {
+        for (let key in data) {
+            Object.defineProperty(this, key, {
+                get() {
+                    return data[key]
+                },
+                set(newVal) {
+                    data[key] = newVal
+                }
+            })
         }
     }
 }
